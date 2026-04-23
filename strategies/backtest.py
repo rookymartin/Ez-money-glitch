@@ -275,14 +275,14 @@ def run_all_strategies(tickers: Optional[List[str]] = None,
     print(f"\nRunning {len(strategies)} strategies on {len(tickers)} tickers…\n")
 
     for strat_name, fn, kwargs, hold in strategies:
-        print(f"{'─'*50}")
+        print("-" * 50)
         print(f"Strategy: {strat_name}")
         result = run_backtest(tickers, strat_name, fn,
                                hold_days=hold, years=years,
                                verbose=verbose, **kwargs)
         results.append(result)
         m = result["metrics"]
-        print(f"  → Sharpe={m.get('sharpe','?')} | CAGR={m.get('cagr_pct','?')}% | "
+        print(f"  -> Sharpe={m.get('sharpe','?')} | CAGR={m.get('cagr_pct','?')}% | "
               f"Win={m.get('win_rate','?'):.0%} | Trades={m.get('n_trades','?')}")
 
     results.sort(key=lambda x: x["metrics"].get("sharpe", -99), reverse=True)
