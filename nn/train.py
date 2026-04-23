@@ -22,9 +22,11 @@ _PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_PROJECT_ROOT))
 
 from nn.model import SwingTradeNet, get_device, EarlyStopping, RegimeLoss, count_parameters, N_META
-from nn.indicators import build_features
+from nn.indicators import build_features, build_features_extended
 from data.fetch import load_tickers_batch
-from data.universe import get_swing_candidates, get_sp500
+from data.universe import get_swing_candidates, get_sp500, get_all_tickers
+from data.macro import get_macro_df
+from data.trends import get_trends_df
 
 MODELS_DIR  = _PROJECT_ROOT / "models"
 RESULTS_DIR = _PROJECT_ROOT / "results"
@@ -57,7 +59,7 @@ def _regime_label(df: pd.DataFrame) -> np.ndarray:
     return regime
 
 
-def _build_dataset(all_data: dict, verbose: bool = True):
+def _build_dataset(all_data: dict, macro_df=None, trends_df=None, verbose: bool = True):
     """Build (X, meta, y_signal, y_regime) arrays from ticker data dict."""
     import torch
     from sklearn.preprocessing import RobustScaler
@@ -68,7 +70,7 @@ def _build_dataset(all_data: dict, verbose: bool = True):
         if len(df) < SEQ_LEN + FORWARD_DAYS + 10:
             continue
         try:
-            feat_df = build_features(df)
+            feat_df = build_features_extended(df, macro_df=macro_df, trends_df=trends_df)
             feat_cols = [c for c in feat_df.columns
                          if c not in ("Open","High","Low","Close","Volume")]
             features = feat_df[feat_cols].values.astype(np.float32)
@@ -119,11 +121,31 @@ def train(tickers: list, years: int = 13, epochs: int = 80,
     import pickle
 
     device = get_device()
-    print(f"\nDownloading data for {len(tickers)} tickers ({years}yr)…")
+    print(f"\nDownloading data for {len(tickers)} tickers ({years}yr)...")
     all_data = load_tickers_batch(tickers, years=years)
 
-    print("Building dataset…")
-    X, meta, y_sig, y_reg, scaler = _build_dataset(all_data)
+    print("Fetching macro data (VIX, yields, DXY)...")
+    try:
+        macro_df = get_macro_df(refresh=True)
+        print(f"  Macro: {len(macro_df)} days, {list(macro_df.columns)}")
+    except Exception as e:
+        print(f"  Macro fetch failed: {e}")
+        macro_df = None
+
+    print("Fetching Google Trends...")
+    try:
+        trends_df = get_trends_df(refresh=True)
+        if not trends_df.empty:
+            print(f"  Trends: {len(trends_df)} days, {list(trends_df.columns)}")
+        else:
+            print("  Trends: unavailable (pytrends not installed or rate-limited)")
+            trends_df = None
+    except Exception as e:
+        print(f"  Trends fetch failed: {e}")
+        trends_df = None
+
+    print("Building dataset...")
+    X, meta, y_sig, y_reg, scaler = _build_dataset(all_data, macro_df=macro_df, trends_df=trends_df)
 
     split = int(len(X) * 0.85)
     X_tr, X_val   = X[:split], X[split:]
@@ -244,8 +266,8 @@ if __name__ == "__main__":
         tickers = get_sp500()
         print(f"Training on full S&P 500: {len(tickers)} tickers")
     else:
-        tickers = get_swing_candidates()
-        print(f"Training on swing candidates: {len(tickers)} tickers")
+        tickers = get_all_tickers()
+        print(f"Training on full universe (SP500 + NASDAQ100 + Oslo): {len(tickers)} tickers")
 
     train(tickers, years=args.years, epochs=args.epochs,
           lr=args.lr, weight_decay=args.weight_decay, batch_size=args.batch_size)

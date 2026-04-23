@@ -561,6 +561,30 @@ def build_features(df: pd.DataFrame,
     return features
 
 
+def build_features_extended(df: pd.DataFrame,
+                            macro_df: "pd.DataFrame | None" = None,
+                            trends_df: "pd.DataFrame | None" = None,
+                            ff5_daily: "pd.DataFrame | None" = None) -> pd.DataFrame:
+    """
+    build_features() plus macro (VIX, yields, DXY) and Google Trends columns.
+    Extra columns are forward-filled then zero-filled so no NaN reaches the model.
+    """
+    feat = build_features(df, ff5_daily=ff5_daily)
+
+    if macro_df is not None and not macro_df.empty:
+        aligned = macro_df.reindex(feat.index, method="ffill").bfill().fillna(0)
+        for col in aligned.columns:
+            feat[col.lower()] = aligned[col].values
+
+    if trends_df is not None and not trends_df.empty:
+        aligned = trends_df.reindex(feat.index, method="ffill").bfill().fillna(50)
+        # Normalise 0-100 → -1…+1
+        for col in aligned.columns:
+            feat[col] = ((aligned[col] - 50) / 50).clip(-1, 1).values
+
+    return feat
+
+
 # ── Signal thresholds ─────────────────────────────────────────────────────────
 
 SIGNAL_CONFIG = {

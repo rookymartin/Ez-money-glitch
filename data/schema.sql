@@ -124,6 +124,28 @@ CREATE TABLE IF NOT EXISTS research_experiments (
 );
 
 -- -------------------------------------------------------------------------
+-- Macro time series  (VIX, yields, DXY, gold — market-wide daily data)
+-- -------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS macro (
+    series  TEXT NOT NULL,   -- e.g. VIX, YIELD_10Y, YIELD_2Y, DXY
+    date    TEXT NOT NULL,
+    value   REAL NOT NULL,
+    PRIMARY KEY (series, date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_macro_date ON macro (date);
+
+-- -------------------------------------------------------------------------
+-- Google Trends  (weekly search interest, interpolated to daily)
+-- -------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS google_trends (
+    keyword TEXT NOT NULL,
+    date    TEXT NOT NULL,
+    value   REAL NOT NULL,   -- 0-100 normalised interest
+    PRIMARY KEY (keyword, date)
+);
+
+-- -------------------------------------------------------------------------
 -- Neural-network training log
 -- -------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS training_log (
