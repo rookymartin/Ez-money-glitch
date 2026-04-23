@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ez-Money-Glitch | Training</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d1117; color: #e6edf3; font-family: 'Segoe UI', system-ui, sans-serif; }
+  .nav { background: #161b22; padding: 12px 24px; display: flex; align-items: center; gap: 24px; border-bottom: 1px solid #30363d; }
+  .nav-brand { font-weight: 700; font-size: 18px; color: #58a6ff; }
+  .nav a { color: #8b949e; text-decoration: none; font-size: 14px; padding: 6px 12px; border-radius: 6px; }
+  .nav a:hover, .nav a.active { background: #21262d; color: #e6edf3; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+  h1 { font-size: 24px; margin-bottom: 8px; }
+  .subtitle { color: #8b949e; font-size: 14px; margin-bottom: 24px; }
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .stat-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 14px; }
+  .stat-card .label { font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .stat-card .value { font-size: 24px; font-weight: 700; color: #58a6ff; }
+  .stat-card .sub { font-size: 11px; color: #8b949e; margin-top: 2px; }
+  .chart-card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+  .chart-card h3 { font-size: 14px; color: #8b949e; margin-bottom: 16px; }
+  .chart-wrap { position: relative; height: 300px; }
+  .status-banner { background: #1c3a1c; border: 1px solid #2ea043; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-size: 14px; }
+  .status-banner.idle { background: #21262d; border-color: #30363d; }
+  .status-banner.error { background: #3a0a0a; border-color: #f85149; }
+  .no-data { text-align: center; color: #8b949e; padding: 48px; font-size: 14px; }
+  .no-data pre { background: #0d1117; padding: 16px; border-radius: 8px; text-align: left; font-size: 13px; color: #7ee787; margin-top: 16px; display: inline-block; }
+  .auto-refresh { color: #8b949e; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <span class="nav-brand">💹 Ez-Money-Glitch</span>
+  <a href="index.html">Hub</a>
+  <a href="training.html" class="active">Training</a>
+  <a href="strategies.html">Strategies</a>
+  <a href="researcher.html">Researcher</a>
+</nav>
+
+<div class="container">
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+    <h1>🧠 NN Training Monitor</h1>
+    <span class="auto-refresh" id="refresh-info">Auto-refreshes every 10s</span>
+  </div>
+  <p class="subtitle">SwingTradeNet v6 — 4-branch CNN + Transformer + DualPooling (1.6M params, RTX 3080)</p>
+
+  <div id="status-banner" class="status-banner idle">No training data found. Run: <code>python run.py train</code></div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="label">Best Val Accuracy</div>
+      <div class="value" id="best-acc">—</div>
+      <div class="sub">higher is better</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Current Epoch</div>
+      <div class="value" id="cur-epoch">—</div>
+      <div class="sub" id="epoch-total">of —</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Val Loss</div>
+      <div class="value" id="val-loss">—</div>
+      <div class="sub">lower is better</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Train Loss</div>
+      <div class="value" id="train-loss">—</div>
+      <div class="sub" id="overfit-gap">gap: —</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Status</div>
+      <div class="value" id="train-status" style="font-size:16px;">—</div>
+      <div class="sub" id="n-samples">— samples</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Features</div>
+      <div class="value" id="n-features">—</div>
+      <div class="sub">TA + meta</div>
+    </div>
+  </div>
+
+  <div id="charts-section" style="display:none;">
+    <div class="chart-card">
+      <h3>Validation Accuracy (%) — target: >40% (random = 33%)</h3>
+      <div class="chart-wrap"><canvas id="acc-chart"></canvas></div>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+      <div class="chart-card">
+        <h3>Training Loss</h3>
+        <div class="chart-wrap"><canvas id="train-loss-chart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h3>Validation Loss</h3>
+        <div class="chart-wrap"><canvas id="val-loss-chart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="no-data-section" class="no-data">
+    <p>No training data yet.</p>
+    <pre>python run.py train
+# or with more data:
+python run.py train --sp500 --years 13 --epochs 80</pre>
+  </div>
+</div>
+
+<script>
+Chart.defaults.color = '#8b949e';
+Chart.defaults.borderColor = '#30363d';
+
+const chartOptions = (label, color) => ({
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { display: false } },
+  scales: {
+    x: { ticks: { font: { size: 11 } } },
+    y: { ticks: { font: { size: 11 } } }
+  },
+  elements: { point: { radius: 2 }, line: { tension: 0.3 } }
+});
+
+let accChart, trainLossChart, valLossChart;
+let lastEpoch = 0;
+
+function initCharts() {
+  accChart = new Chart(document.getElementById('acc-chart'), {
+    type: 'line',
+    data: { labels: [], datasets: [
+      { label: 'Val Acc %', data: [], borderColor: '#3fb950', fill: false, borderWidth: 2 },
+      { label: '33% (random)', data: [], borderColor: '#f85149', borderDash: [4,4], fill: false, borderWidth: 1, pointRadius: 0 }
+    ]},
+    options: chartOptions('Val Acc %', '#3fb950'),
+  });
+  trainLossChart = new Chart(document.getElementById('train-loss-chart'), {
+    type: 'line',
+    data: { labels: [], datasets: [
+      { label: 'Train Loss', data: [], borderColor: '#58a6ff', fill: false, borderWidth: 2 }
+    ]},
+    options: chartOptions(),
+  });
+  valLossChart = new Chart(document.getElementById('val-loss-chart'), {
+    type: 'line',
+    data: { labels: [], datasets: [
+      { label: 'Val Loss', data: [], borderColor: '#ffa657', fill: false, borderWidth: 2 }
+    ]},
+    options: chartOptions(),
+  });
+}
+
+function updateChart(chart, labels, ...datasets) {
+  chart.data.labels = labels;
+  datasets.forEach((d, i) => { chart.data.datasets[i].data = d; });
+  chart.update('none');
+}
+
+async function refresh() {
+  try {
+    const r = await fetch('../results/training_log.json?t=' + Date.now());
+    if (!r.ok) throw new Error('not found');
+    const data = await r.json();
+    const log = data.log || [];
+    const status = data.status || {};
+
+    if (!accChart) initCharts();
+    document.getElementById('charts-section').style.display = 'block';
+    document.getElementById('no-data-section').style.display = 'none';
+
+    const epochs = log.map(e => e.epoch);
+    const valAcc = log.map(e => e.val_acc);
+    const trainL = log.map(e => e.train_loss);
+    const valL   = log.map(e => e.val_loss);
+    const random  = epochs.map(() => 33.3);
+
+    updateChart(accChart, epochs, valAcc, random);
+    updateChart(trainLossChart, epochs, trainL);
+    updateChart(valLossChart, epochs, valL);
+
+    const lastEntry = log[log.length - 1] || {};
+    document.getElementById('best-acc').textContent =
+      (status.best_val_acc || 0).toFixed(1) + '%';
+    document.getElementById('cur-epoch').textContent = status.epoch || lastEntry.epoch || '—';
+    document.getElementById('epoch-total').textContent = 'of ' + (status.epochs_total || '?');
+    document.getElementById('val-loss').textContent =
+      (lastEntry.val_loss || 0).toFixed(4);
+    document.getElementById('train-loss').textContent =
+      (lastEntry.train_loss || 0).toFixed(4);
+    const gap = ((lastEntry.train_loss || 0) - (lastEntry.val_loss || 0));
+    document.getElementById('overfit-gap').textContent =
+      'gap: ' + (gap > 0 ? '+' : '') + gap.toFixed(4);
+    document.getElementById('train-status').textContent =
+      (status.status || 'unknown').toUpperCase();
+    document.getElementById('n-samples').textContent =
+      (status.n_samples || 0).toLocaleString() + ' samples';
+    document.getElementById('n-features').textContent = status.n_features || '—';
+
+    const isTraining = status.status === 'training';
+    const banner = document.getElementById('status-banner');
+    banner.className = 'status-banner' + (isTraining ? '' : ' idle');
+    banner.textContent = isTraining
+      ? `Training… epoch ${status.epoch}/${status.epochs_total} | val_acc=${status.best_val_acc?.toFixed(1)}% (best)`
+      : `Training ${status.status || 'complete'} — best val_acc: ${(status.best_val_acc||0).toFixed(1)}%`;
+
+    lastEpoch = status.epoch || 0;
+  } catch (e) {
+    document.getElementById('status-banner').className = 'status-banner idle';
+    document.getElementById('status-banner').innerHTML =
+      'No training data found. Run: <code>python run.py train</code>';
+    document.getElementById('charts-section').style.display = 'none';
+    document.getElementById('no-data-section').style.display = 'block';
+  }
+  document.getElementById('refresh-info').textContent =
+    'Last refresh: ' + new Date().toLocaleTimeString();
+}
+
+refresh();
+setInterval(refresh, 10000);
+</script>
+</body>
+</html>

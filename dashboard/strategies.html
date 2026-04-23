@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ez-Money-Glitch | Strategies</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d1117; color: #e6edf3; font-family: 'Segoe UI', system-ui, sans-serif; }
+  .nav { background: #161b22; padding: 12px 24px; display: flex; align-items: center; gap: 24px; border-bottom: 1px solid #30363d; }
+  .nav-brand { font-weight: 700; font-size: 18px; color: #58a6ff; }
+  .nav a { color: #8b949e; text-decoration: none; font-size: 14px; padding: 6px 12px; border-radius: 6px; }
+  .nav a:hover, .nav a.active { background: #21262d; color: #e6edf3; }
+  .container { max-width: 1400px; margin: 0 auto; padding: 32px 24px; }
+  h1 { font-size: 24px; margin-bottom: 8px; }
+  .subtitle { color: #8b949e; font-size: 14px; margin-bottom: 24px; }
+  .chart-card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; margin-bottom: 24px; }
+  .chart-card h3 { font-size: 15px; margin-bottom: 16px; }
+  .chart-wrap { position: relative; height: 380px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 10px 12px; color: #8b949e; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #30363d; }
+  td { padding: 10px 12px; border-bottom: 1px solid #21262d; }
+  tr:hover td { background: #161b22; }
+  .sharpe-good { color: #3fb950; font-weight: 600; }
+  .sharpe-ok   { color: #d29922; }
+  .sharpe-bad  { color: #f85149; }
+  .rank-1 { color: #ffd700; }
+  .no-data { text-align: center; color: #8b949e; padding: 48px; font-size: 14px; }
+  .no-data pre { background: #0d1117; padding: 16px; border-radius: 8px; text-align: left; font-size: 13px; color: #7ee787; margin-top: 16px; display: inline-block; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <span class="nav-brand">💹 Ez-Money-Glitch</span>
+  <a href="index.html">Hub</a>
+  <a href="training.html">Training</a>
+  <a href="strategies.html" class="active">Strategies</a>
+  <a href="researcher.html">Researcher</a>
+</nav>
+
+<div class="container">
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+    <h1>📈 Strategy Hub</h1>
+    <span style="color:#8b949e; font-size:12px;" id="ts">—</span>
+  </div>
+  <p class="subtitle">Walk-forward backtest results (13yr, no look-ahead bias)</p>
+
+  <div id="no-data" class="no-data">
+    <p>No backtest results yet.</p>
+    <pre>python run.py backtest
+# or quick test:
+python -m strategies.backtest --quick</pre>
+  </div>
+
+  <div id="main-content" style="display:none;">
+    <div class="chart-card">
+      <h3>Equity Curve Comparison (portfolio equity, $100k start)</h3>
+      <div class="chart-wrap"><canvas id="equity-chart"></canvas></div>
+    </div>
+
+    <div class="chart-card">
+      <h3>Strategy Rankings</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Strategy</th>
+            <th>Sharpe</th>
+            <th>CAGR %</th>
+            <th>Max DD %</th>
+            <th>Win Rate</th>
+            <th>Trades</th>
+          </tr>
+        </thead>
+        <tbody id="rankings-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+Chart.defaults.color = '#8b949e';
+Chart.defaults.borderColor = '#30363d';
+
+const COLORS = [
+  '#58a6ff','#3fb950','#ffa657','#ff7b72','#d2a8ff','#79c0ff',
+  '#aff5b4','#ffb8c8','#ffa657','#8b949e','#e3b341','#56d364',
+  '#f78166','#bc8cff',
+];
+
+async function load() {
+  try {
+    const r = await fetch('../results/backtest_results.json?t=' + Date.now());
+    if (!r.ok) throw new Error();
+    const data = await r.json();
+    render(data);
+  } catch {
+    document.getElementById('no-data').style.display = 'block';
+    document.getElementById('main-content').style.display = 'none';
+  }
+}
+
+function sharpeClass(v) {
+  if (v >= 0.5) return 'sharpe-good';
+  if (v >= 0.2) return 'sharpe-ok';
+  return 'sharpe-bad';
+}
+
+function render(data) {
+  document.getElementById('no-data').style.display = 'none';
+  document.getElementById('main-content').style.display = 'block';
+
+  const ts = data.ts ? new Date(data.ts).toLocaleString() : '—';
+  document.getElementById('ts').textContent = 'Backtest run: ' + ts;
+
+  const results = data.results || [];
+
+  // Rankings table
+  const tbody = document.getElementById('rankings-body');
+  tbody.innerHTML = '';
+  results.forEach((r, i) => {
+    const m = r.metrics || {};
+    const sharpe = (m.sharpe || 0);
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td style="color:#8b949e;">${i === 0 ? '🥇' : i + 1}</td>
+      <td style="font-weight:600;${i === 0 ? 'color:#58a6ff;' : ''}">${r.strategy}</td>
+      <td class="${sharpeClass(sharpe)}">${sharpe.toFixed(3)}</td>
+      <td>${(m.cagr_pct || 0).toFixed(1)}%</td>
+      <td style="color:#f85149;">${(m.max_dd_pct || 0).toFixed(1)}%</td>
+      <td>${m.win_rate !== undefined ? (m.win_rate * 100).toFixed(0) + '%' : '—'}</td>
+      <td>${(m.n_trades || 0).toLocaleString()}</td>
+    `;
+    tbody.appendChild(row);
+  });
+
+  // Equity chart — top 8 strategies with equity data
+  const withEquity = results.filter(r => r.portfolio_equity && r.portfolio_equity.length > 10);
+  const top8 = withEquity.slice(0, 8);
+
+  if (top8.length === 0) {
+    document.getElementById('equity-chart').parentElement.innerHTML =
+      '<p style="color:#8b949e; padding:20px; text-align:center;">No equity data yet — run backtest first.</p>';
+    return;
+  }
+
+  const allDates = new Set();
+  top8.forEach(r => r.portfolio_equity.forEach(([d]) => allDates.add(d)));
+  const sortedDates = Array.from(allDates).sort();
+
+  const datasets = top8.map((r, i) => {
+    const equityMap = Object.fromEntries(r.portfolio_equity.map(([d, v]) => [d, v]));
+    let prev = null;
+    const values = sortedDates.map(d => {
+      if (equityMap[d] !== undefined) prev = equityMap[d];
+      return prev;
+    }).filter(v => v !== null);
+    const datesForThis = sortedDates.filter(d => equityMap[d] !== undefined || true).slice(-values.length);
+
+    return {
+      label: r.strategy,
+      data: values,
+      borderColor: COLORS[i % COLORS.length],
+      fill: false,
+      borderWidth: r.strategy === 'SPY_BuyHold' ? 2 : 1.5,
+      borderDash: r.strategy === 'SPY_BuyHold' ? [6, 3] : [],
+      pointRadius: 0,
+      tension: 0.2,
+    };
+  });
+
+  const step = Math.max(1, Math.floor(sortedDates.length / 60));
+  const labels = sortedDates.filter((_, i) => i % step === 0);
+
+  new Chart(document.getElementById('equity-chart'), {
+    type: 'line',
+    data: { labels: sortedDates, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } }
+      },
+      scales: {
+        x: {
+          ticks: { maxTicksLimit: 12, font: { size: 10 } },
+        },
+        y: {
+          ticks: { font: { size: 10 }, callback: v => '$' + (v/1000).toFixed(0) + 'k' }
+        }
+      },
+    }
+  });
+}
+
+load();
+setInterval(load, 60000);
+</script>
+</body>
+</html>

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ez-Money-Glitch | Researcher</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d1117; color: #e6edf3; font-family: 'Segoe UI', system-ui, sans-serif; }
+  .nav { background: #161b22; padding: 12px 24px; display: flex; align-items: center; gap: 24px; border-bottom: 1px solid #30363d; }
+  .nav-brand { font-weight: 700; font-size: 18px; color: #58a6ff; }
+  .nav a { color: #8b949e; text-decoration: none; font-size: 14px; padding: 6px 12px; border-radius: 6px; }
+  .nav a:hover, .nav a.active { background: #21262d; color: #e6edf3; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+  h1 { font-size: 24px; margin-bottom: 8px; }
+  .subtitle { color: #8b949e; font-size: 14px; margin-bottom: 24px; }
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .stat-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 14px; }
+  .stat-card .label { font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .stat-card .value { font-size: 22px; font-weight: 700; color: #58a6ff; }
+  .stat-card .sub { font-size: 11px; color: #8b949e; margin-top: 2px; }
+  .champion-card { background: #1c3a1c; border: 1px solid #2ea043; border-radius: 12px; padding: 20px; margin-bottom: 24px; }
+  .champion-card h3 { color: #3fb950; margin-bottom: 12px; font-size: 16px; }
+  .champion-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 12px; }
+  .champ-metric { text-align: center; }
+  .champ-metric .v { font-size: 22px; font-weight: 700; color: #3fb950; }
+  .champ-metric .l { font-size: 11px; color: #8b949e; margin-top: 2px; }
+  .params { font-family: monospace; font-size: 12px; color: #7ee787; background: #0d1117; padding: 8px 12px; border-radius: 6px; margin-top: 10px; }
+  .section-card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+  .section-card h3 { font-size: 15px; margin-bottom: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 8px 12px; color: #8b949e; font-size: 11px; text-transform: uppercase; border-bottom: 1px solid #30363d; }
+  td { padding: 8px 12px; border-bottom: 1px solid #21262d; }
+  tr:hover td { background: #0d1117; }
+  .good { color: #3fb950; }
+  .med  { color: #d29922; }
+  .bad  { color: #f85149; }
+  .running-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .running-badge.yes { background: #1c3a1c; color: #3fb950; }
+  .running-badge.no  { background: #21262d; color: #8b949e; }
+  .no-data { text-align: center; color: #8b949e; padding: 48px; }
+  .no-data pre { background: #0d1117; padding: 16px; border-radius: 8px; text-align: left; font-size: 13px; color: #7ee787; margin-top: 16px; display: inline-block; }
+  .explore-badge { background: #1f3a5e; color: #58a6ff; padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+  .exploit-badge { background: #3a2f0a; color: #d29922; padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <span class="nav-brand">💹 Ez-Money-Glitch</span>
+  <a href="index.html">Hub</a>
+  <a href="training.html">Training</a>
+  <a href="strategies.html">Strategies</a>
+  <a href="researcher.html" class="active">Researcher</a>
+</nav>
+
+<div class="container">
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+    <h1>🔬 Auto-Researcher</h1>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <span class="running-badge" id="running-badge">—</span>
+      <span style="color:#8b949e; font-size:12px;" id="ts">—</span>
+    </div>
+  </div>
+  <p class="subtitle">Autonomous strategy discovery: Propose → Walk-forward test → Promote champion → Exploit</p>
+
+  <div id="no-data" class="no-data">
+    <p>No researcher data yet.</p>
+    <pre>python run.py research
+# or quick test:
+python -m researcher.auto_researcher --dry-run</pre>
+  </div>
+
+  <div id="main-content" style="display:none;">
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="label">Experiments</div>
+        <div class="value" id="n-exp">—</div>
+        <div class="sub">total run</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Rate</div>
+        <div class="value" id="rate">—</div>
+        <div class="sub">per hour</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Uptime</div>
+        <div class="value" id="uptime">—</div>
+        <div class="sub">hours</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Exploit Queue</div>
+        <div class="value" id="exploit-q">—</div>
+        <div class="sub">pending</div>
+      </div>
+    </div>
+
+    <div id="champion-section" class="champion-card" style="display:none;">
+      <h3>⭐ Current Champion</h3>
+      <div style="font-size:20px; font-weight:700; color:#e6edf3;" id="champ-name">—</div>
+      <div class="champion-metrics">
+        <div class="champ-metric">
+          <div class="v" id="champ-sharpe">—</div>
+          <div class="l">Sharpe</div>
+        </div>
+        <div class="champ-metric">
+          <div class="v" id="champ-cagr">—</div>
+          <div class="l">CAGR %</div>
+        </div>
+        <div class="champ-metric">
+          <div class="v" id="champ-score">—</div>
+          <div class="l">Score</div>
+        </div>
+        <div class="champ-metric">
+          <div class="v" id="champ-trades">—</div>
+          <div class="l">Trades</div>
+        </div>
+      </div>
+      <div class="params" id="champ-params"></div>
+    </div>
+
+    <div class="section-card">
+      <h3>Top Strategy Rankings</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Strategy</th>
+            <th>Best Sharpe</th>
+            <th>Best CAGR</th>
+            <th>Score</th>
+            <th>Experiments</th>
+          </tr>
+        </thead>
+        <tbody id="rankings-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+async function load() {
+  try {
+    const r = await fetch('../results/researcher_status.json?t=' + Date.now());
+    if (!r.ok) throw new Error();
+    const data = await r.json();
+    render(data);
+  } catch {
+    document.getElementById('no-data').style.display = 'block';
+    document.getElementById('main-content').style.display = 'none';
+  }
+}
+
+function scoreClass(s) {
+  if (s >= 0.6) return 'good';
+  if (s >= 0.4) return 'med';
+  return 'bad';
+}
+
+function render(data) {
+  document.getElementById('no-data').style.display = 'none';
+  document.getElementById('main-content').style.display = 'block';
+
+  const running = data.running;
+  const badge = document.getElementById('running-badge');
+  badge.textContent = running ? '● RUNNING' : '● IDLE';
+  badge.className = 'running-badge ' + (running ? 'yes' : 'no');
+
+  document.getElementById('ts').textContent =
+    data.ts ? new Date(data.ts).toLocaleTimeString() : '—';
+  document.getElementById('n-exp').textContent = (data.experiments || 0).toLocaleString();
+  document.getElementById('rate').textContent = data.per_hour || 0;
+  document.getElementById('uptime').textContent = (data.uptime_h || 0).toFixed(1);
+  document.getElementById('exploit-q').textContent = data.exploit_queue || 0;
+
+  const champ = data.champion;
+  if (champ) {
+    document.getElementById('champion-section').style.display = 'block';
+    document.getElementById('champ-name').textContent = champ.strategy || '—';
+    document.getElementById('champ-sharpe').textContent = (champ.sharpe || 0).toFixed(3);
+    document.getElementById('champ-cagr').textContent = (champ.cagr_pct || 0).toFixed(1) + '%';
+    document.getElementById('champ-score').textContent = (champ.score || 0).toFixed(3);
+    document.getElementById('champ-trades').textContent = champ.n_trades || '—';
+
+    const params = { ...champ.sig_params, ...champ.port_params };
+    document.getElementById('champ-params').textContent =
+      JSON.stringify(params, null, 2);
+  }
+
+  const rankings = data.top_strategies || [];
+  const tbody = document.getElementById('rankings-body');
+  tbody.innerHTML = '';
+  rankings.forEach((r, i) => {
+    const row = document.createElement('tr');
+    const sc = r.best_score || 0;
+    row.innerHTML = `
+      <td style="color:#8b949e;">${i + 1}</td>
+      <td style="font-weight:600;">${r.strategy}</td>
+      <td class="${scoreClass(r.best_sharpe || 0)}">${(r.best_sharpe || 0).toFixed(3)}</td>
+      <td>${(r.best_cagr || 0).toFixed(1)}%</td>
+      <td class="${scoreClass(sc)}">${sc.toFixed(3)}</td>
+      <td>${r.n_experiments || 0}</td>
+    `;
+    tbody.appendChild(row);
+  });
+}
+
+load();
+setInterval(load, 30000);
+</script>
+</body>
+</html>
