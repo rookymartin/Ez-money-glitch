@@ -1,5 +1,6 @@
 venv/
 data/cache/
+data/ez_money.db
 models/*.pt
 models/*.pkl
 results/
